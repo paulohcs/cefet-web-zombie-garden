@@ -32,6 +32,11 @@ router.get('/', async (req, res, next) => {
       error: req.flash('error')
     })
 
+    res.format({
+      json: () => res.json({ people }),
+      html: () => res.render('list-people', { people, success: req.flash('success'), error: req.flash('error') })
+    })
+
   } catch (error) {
     console.error(error)
     error.friendlyMessage = 'Problema ao recuperar pessoas'
@@ -88,6 +93,26 @@ router.get('/new/', (req, res) => {
 //   2. Redirecionar para a rota de listagem de pessoas
 //      - Em caso de sucesso do INSERT, colocar uma mensagem feliz
 //      - Em caso de erro do INSERT, colocar mensagem vermelhinha
+router.post('/', async(req,res) => {
+  const body = req.body;
+  if(body == null || !body.name){
+    req.flash('error');
+    return;
+  }
+  try{
+    const [result] = await db.execute(`INSERT INTO person (id, name, alive) VALUES (NULL, ?, TRUE)`, [body.name]);
+    if(result){
+      req.flash('success', `A pessoa ${body.name} foi adicionada com sucesso!`);
+    } else {
+      req.flash('error')
+    }
+
+  } catch (erro){
+    console.error(erro)
+    throw erro
+  }
+  res.redirect('/people')
+})
 
 
 /* DELETE uma pessoa */
@@ -97,6 +122,25 @@ router.get('/new/', (req, res) => {
 //   2. Redirecionar para a rota de listagem de pessoas
 //      - Em caso de sucesso do INSERT, colocar uma mensagem feliz
 //      - Em caso de erro do INSERT, colocar mensagem vermelhinha
+router.delete('/:id', async (req, res) => {
+  const personId = req.params.id;
+  if(!personId){
+    req.flash('error', `Erro: Id inválida`);
+    return;
+  }
 
+  try{
+    const [result] = await db.execute(`DELETE FROM person WHERE id=?`, [personId]);
+    if(result.affectedRows === 1){
+      req.flash('success', `A pessoa foi deletada com sucesso!`);
+    } else {
+      req.flash('error', `Erro: Não foi possível encontrar essa pessoa.`)
+    }
+  } catch (erro){
+    console.error(erro);
+    throw erro;
+  }
+  res.redirect('/people');
+})
 
 export default router
